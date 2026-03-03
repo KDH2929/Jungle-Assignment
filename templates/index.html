@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+
+    <!-- 이 부분은 절대 지우지 마세요. -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- 이 부분은 절대 지우지 마세요. -->
+
+    <!-- 구글폰트 -->
+    <link
+      href="https://fonts.googleapis.com/css?family=Stylish&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- 아이콘-->
+    <link 
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css"
+        rel="stylesheet"     
+    />
+
+    <title>크래프톤 정글 | 부트스트랩 연습하기</title>
+
+    <!-- style -->
+    <style type="text/css">
+      * {
+        font-family: "Stylish", sans-serif;
+      }
+
+      .wrap {
+        width: 900px;
+        margin: auto;
+      }
+
+      .comment {
+        color: blue;
+        font-weight: bold;
+      }
+
+
+      .version {
+        background-color: gray;
+        color: white;      
+      }
+
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+        <div class="p-5 mb-4 bg-light rounded-3">
+            <div class="container-fluid py-5">
+                <h1 class="display-4">
+                    <span class="title">나홀로메모장</span> 
+                    <span class="version">ver2.0</span>
+                </h1>
+                
+                <div class="container" style="max-width: 500px; margin-left: 0; padding-left: 0;">
+                    <div class="form-group mb-2">
+                        <input id="memo-title" class="form-control" placeholder="제목을 입력하세요" />
+                    </div>
+                    <div class="form-group mb-2">
+                        <textarea id="memo-content" class="form-control" rows="2" placeholder="내용을 입력하세요"></textarea>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary mt-3" type="submit" onclick="postMemo()">저장하기</button>
+            </div>
+        </div>
+
+        <div id="card-list" class="row row-cols-1 row-cols-md-3 g-4">
+            
+        </div> 
+    </div>
+
+    <!-- 이 부분은 절대 지우지 마세요. -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- 이 부분은 절대 지우지 마세요. -->
+
+    <script>
+      $(document).ready(function () {
+        // 페이지가 로드되자마자 실행되어야 할 함수
+        showMemos();
+      });
+
+      function postMemo() {
+        let title = $("#memo-title").val();
+        let content = $("#memo-content").val();
+
+        $.ajax({
+          type: "POST",
+          url: "/memo",
+          data: { title: title, content: content },
+          success: function (response) {
+            if (response["result"] == "success") {
+              alert(response["msg"]);
+              window.location.reload();
+            } 
+            
+            else {
+              alert(response["msg"]);
+            }
+          },
+        });
+      }
+
+      function showMemos() {
+        // 기존에 있던 카드들을 지우기
+        $("#card-list").empty();
+
+        // DB 로부터 받은 데이터를 루프문으로 돌려서 html 삽입
+        $.ajax({
+          type: "GET",
+          url: "/memo",
+          data: {},
+          success: function (response) {
+            if (response["result"] == "success") {
+              let memos = response["memos"];
+
+              for (let i = 0; i < memos.length; i++) {
+                
+                let id = memos[i]["_id"];
+                let title = memos[i]["title"];
+                let content = memos[i]["content"];
+                let likes = memos[i]["likes"];
+
+                // 카드 HTML
+                let card_html = `
+                  <div class="col" data-id="${id}">
+                      <div class="card h-100">
+                          <div class="card-body">
+                              <div class="display-box">
+                                  <h5 class="card-title">${title}</h5>
+                                  <p class="card-text">${content}</p>
+                                  <p class="card-likes">${likes}</p>
+                                  <button class="btn btn-info edit-button" onclick="openEdit(this)">수정</button>
+                                  <button class="btn btn-danger delete-button" onclick="removeMemo(this)">삭제</button>
+                                  <a href="#" class="link-like" onclick="addLike('${id}')">
+                                    좋아요! <i class="bi bi-hand-thumbs-up"></i>
+                                  </a>
+                              </div>
+
+                              <div class="edit-box" style="display:none;">
+                                  <input class="form-control mb-2 new-title" value="${title}">
+                                  <textarea class="form-control mb-2 new-text" rows="2">${content}</textarea>
+                                  <button class="btn btn-success save-button" onclick="saveEdit(this)">저장</button>
+                                  <button class="btn btn-secondary" onclick="closeEdit(this)">취소</button>
+                              </div>
+                          </div>
+                      </div>
+                  </div>`;
+
+                $("#card-list").append(card_html);
+
+              }
+            }
+          },
+        });
+      }
+
+      function openEdit(element) {
+        // display-box 숨기기
+        $(element).closest('.display-box').hide();
+
+        // edit-box 보여주기
+        $(element).closest('.card-body').find('.edit-box').show();
+      }
+
+      function closeEdit(element) {
+        // edit-box 숨기기
+        $(element).closest('.edit-box').hide();
+
+        // display-box 보여주기
+        $(element).closest('.card-body').find('.display-box').show(); 
+      }
+
+
+      function saveEdit(element) {
+          let parentCard = $(element).closest('.col');
+          let id = parentCard.attr('data-id');
+          let newTitle = parentCard.find('.new-title').val();
+          let newContent = parentCard.find('.new-text').val();
+
+          console.log("--- 수정 요청 데이터 ---");
+          console.log("Target ID:", id);
+          console.log("New Title:", newTitle);
+          console.log("New Content:", newContent);
+
+          $.ajax({
+              type: "PUT",
+              url: "/memo",
+              data: { id: id, title: newTitle, content: newContent },
+              success: function (response) {
+                  if (response["result"] == "success") {
+                      alert(response["msg"]);
+                      window.location.reload();
+                  }
+              }
+
+          });
+      }
+
+      function removeMemo(element) {
+        // 클릭한 버튼이 속한 카드의 data-id를 가져오기
+        let parentCard = $(element).closest('.col');
+        let id = parentCard.attr('data-id');
+
+        $.ajax({
+          type: "DELETE",
+          url: "/memo",
+          data: { id: id },
+          success: function (response) {
+            if (response["result"] == "success") {   
+              alert(response["msg"]);   
+              window.location.reload();
+            }
+          },
+          error: function(err) {
+            console.log("에러 발생:", err);
+            alert("삭제 중 서버 오류가 발생했습니다.");
+          }
+        });
+        
+      }
+      
+      function addLike(id) {
+        $.ajax({
+            type: "PUT",
+            url: "/memo/like",
+            data: { id: id },
+            success: function (response) {
+                if (response["result"] == "success") {
+                    window.location.reload();
+                }
+            },
+            error: function(err) {
+                console.log("에러 발생:", err);
+            }
+        });
+    }
+      
+    </script>
+
+  </body>
+</html>
